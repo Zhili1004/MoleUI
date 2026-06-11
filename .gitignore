@@ -1,0 +1,13 @@
+# Rust / Tauri build output
+/src-tauri/target/
+/src-tauri/gen/schemas/
+
+# Node
+/node_modules/
+
+# macOS
+.DS_Store
+
+# Local / scratch
+*.log
+/dist/test.html

@@ -1,0 +1,61 @@
+<svg width="1200" height="380" viewBox="0 0 1200 380" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff9550"/>
+      <stop offset="0.52" stop-color="#ff5e8e"/>
+      <stop offset="1" stop-color="#a06bff"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.06"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="380" rx="40" fill="url(#bg)"/>
+  <circle cx="170" cy="60" r="150" fill="#ffffff" opacity="0.16" filter="url(#soft)"/>
+  <circle cx="1040" cy="340" r="180" fill="#7d4bff" opacity="0.22" filter="url(#soft)"/>
+
+  <!-- glass app tile with mole -->
+  <g transform="translate(96 104)">
+    <rect width="172" height="172" rx="40" fill="url(#glass)" stroke="#ffffff" stroke-opacity="0.5" stroke-width="1.5"/>
+    <g transform="translate(86 92)">
+      <circle r="58" fill="#ffffff"/>
+      <circle cx="-40" cy="-46" r="16" fill="#ffffff"/>
+      <circle cx="40" cy="-46" r="16" fill="#ffffff"/>
+      <circle cx="-40" cy="-46" r="8" fill="#ffd9e6"/>
+      <circle cx="40" cy="-46" r="8" fill="#ffd9e6"/>
+      <path d="M -30 -6 q 9 9 18 0" stroke="#54407c" stroke-width="6" fill="none" stroke-linecap="round"/>
+      <path d="M 12 -6 q 9 9 18 0" stroke="#54407c" stroke-width="6" fill="none" stroke-linecap="round"/>
+      <circle cx="-34" cy="16" r="9" fill="#ffd9e6"/>
+      <circle cx="34" cy="16" r="9" fill="#ffd9e6"/>
+      <ellipse cx="0" cy="10" rx="11" ry="8" fill="#ff5e8e"/>
+      <path d="M 0 18 v 11" stroke="#54407c" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M 0 29 q -6 7 -14 3 M 0 29 q 6 7 14 3" stroke="#54407c" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    </g>
+  </g>
+  <path d="M 250 96 l 7 19 19 7 -19 7 -7 19 -7 -19 -19 -7 19 -7 z" fill="#ffffff" opacity="0.95"/>
+
+  <!-- wordmark -->
+  <text x="316" y="176" font-size="78" font-weight="800" fill="#ffffff" letter-spacing="-1">MoleUI</text>
+  <text x="320" y="226" font-size="27" font-weight="600" fill="#ffffff" opacity="0.96">给 tw93/Mole 套上的原生 macOS 图形界面</text>
+  <text x="320" y="262" font-size="20" font-weight="500" fill="#ffffff" opacity="0.85">A liquid-glass native GUI for the Mole Mac cleanup CLI</text>
+
+  <!-- chips -->
+  <g font-size="19" font-weight="600" fill="#ffffff">
+    <g transform="translate(320 296)">
+      <rect width="180" height="40" rx="20" fill="#ffffff" fill-opacity="0.18" stroke="#ffffff" stroke-opacity="0.4"/>
+      <text x="20" y="26">Intel · Apple Silicon</text>
+    </g>
+    <g transform="translate(516 296)">
+      <rect width="132" height="40" rx="20" fill="#ffffff" fill-opacity="0.18" stroke="#ffffff" stroke-opacity="0.4"/>
+      <text x="20" y="26">Rust · &lt;13MB</text>
+    </g>
+    <g transform="translate(664 296)">
+      <rect width="150" height="40" rx="20" fill="#ffffff" fill-opacity="0.18" stroke="#ffffff" stroke-opacity="0.4"/>
+      <text x="20" y="26">GPL-3.0 · 已公证</text>
+    </g>
+  </g>
+</svg>

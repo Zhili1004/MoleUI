@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MoleUI</title>
+  <link rel="stylesheet" href="vendor/xterm.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="bg" aria-hidden="true">
+    <div class="blob b1"></div>
+    <div class="blob b2"></div>
+    <div class="blob b3"></div>
+  </div>
+
+  <div id="app">
+    <aside id="sidebar">
+      <div class="logo" data-tauri-drag-region>
+        <h2 data-tauri-drag-region>Mole</h2>
+        <p data-tauri-drag-region data-i18n="app.subtitle"></p>
+      </div>
+
+      <nav id="nav">
+        <button class="nav-item" data-view="dashboard">
+          <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5 10v10h14V10M9.5 20v-6h5v6"/></svg>
+          <span data-i18n="nav.dashboard"></span>
+        </button>
+        <p class="nav-group" data-i18n="group.cleanup"></p>
+        <button class="nav-item" data-view="clean">
+          <svg viewBox="0 0 24 24"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9zM19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9zM5 16l.7 1.6L7.3 18.3l-1.6.7L5 20.6l-.7-1.6-1.6-.7 1.6-.7z"/></svg>
+          <span data-i18n="nav.clean"></span>
+        </button>
+        <button class="nav-item" data-view="uninstall">
+          <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></svg>
+          <span data-i18n="nav.uninstall"></span>
+        </button>
+        <button class="nav-item" data-view="optimize">
+          <svg viewBox="0 0 24 24"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+          <span data-i18n="nav.optimize"></span>
+        </button>
+        <button class="nav-item" data-view="purge">
+          <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM9 13h6"/></svg>
+          <span data-i18n="nav.purge"></span>
+        </button>
+        <button class="nav-item" data-view="installer">
+          <svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5v8l9 5 9-5zM3 8l9 5 9-5M12 13v8"/></svg>
+          <span data-i18n="nav.installer"></span>
+        </button>
+        <p class="nav-group" data-i18n="group.insight"></p>
+        <button class="nav-item" data-view="analyze">
+          <svg viewBox="0 0 24 24"><path d="M21.2 15.9A10 10 0 1 1 8 2.8M22 12A10 10 0 0 0 12 2v10z"/></svg>
+          <span data-i18n="nav.analyze"></span>
+        </button>
+        <button class="nav-item" data-view="status">
+          <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          <span data-i18n="nav.status"></span>
+        </button>
+        <button class="nav-item" data-view="history">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+          <span data-i18n="nav.history"></span>
+        </button>
+        <p class="nav-group" data-i18n="group.more"></p>
+        <button class="nav-item" data-view="advanced">
+          <svg viewBox="0 0 24 24"><path d="M4 17l6-6-6-6M12 19h8"/></svg>
+          <span data-i18n="nav.advanced"></span>
+        </button>
+        <button class="nav-item" data-view="settings">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M10.3 3.6c.4-1.5 3-1.5 3.4 0 .3 1.1 1.6 1.6 2.6 1 1.3-.8 3 .9 2.2 2.2-.6 1-.1 2.3 1 2.6 1.5.4 1.5 3 0 3.4-1.1.3-1.6 1.6-1 2.6.8 1.3-.9 3-2.2 2.2-1-.6-2.3-.1-2.6 1-.4 1.5-3 1.5-3.4 0-.3-1.1-1.6-1.6-2.6-1-1.3.8-3-.9-2.2-2.2.6-1 .1-2.3-1-2.6-1.5-.4-1.5-3 0-3.4 1.1-.3 1.6-1.6 1-2.6-.8-1.3.9-3 2.2-2.2 1 .6 2.3.1 2.6-1z"/></svg>
+          <span data-i18n="nav.settings"></span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="status-pill" id="cli-pill">
+          <span class="dot" id="cli-dot"></span>
+          <span id="cli-text">…</span>
+        </div>
+        <button class="lang-pill" id="btn-lang">EN</button>
+      </div>
+    </aside>
+
+    <main id="main">
+
+      <section class="view" id="view-dashboard" hidden>
+        <header class="view-head" data-tauri-drag-region>
+          <div data-tauri-drag-region>
+            <h1 id="dash-greet" data-tauri-drag-region></h1>
+            <p id="dash-sub" class="muted" data-tauri-drag-region></p>
+          </div>
+        </header>
+        <div class="dash-grid">
+          <div class="glass card dash-hero">
+            <svg id="dash-ring" viewBox="0 0 180 180" width="170" height="170">
+              <defs>
+                <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#ff9550"/>
+                  <stop offset=".55" stop-color="#ff5e8e"/>
+                  <stop offset="1" stop-color="#a06bff"/>
+                </linearGradient>
+              </defs>
+              <circle class="ring-track" cx="90" cy="90" r="74"/>
+              <circle class="ring-fill" id="dash-ring-fill" cx="90" cy="90" r="74"/>
+              <text class="ring-big" id="dash-disk-pct" x="90" y="88">…</text>
+              <text class="ring-small" id="dash-disk-label" x="90" y="110"></text>
+            </svg>
+            <div class="dash-hero-side">
+              <div class="stat-mini glass-inset">
+                <span class="stat-ico">🩺</span>
+                <div>
+                  <p class="muted" data-i18n="dash.health"></p>
+                  <p class="stat-num" id="dash-health">…</p>
+                </div>
+              </div>
+              <div class="stat-mini glass-inset">
+                <span class="stat-ico">🧠</span>
+                <div>
+                  <p class="muted" data-i18n="dash.memory"></p>
+                  <p class="stat-num" id="dash-mem">…</p>
+                </div>
+              </div>
+              <div class="stat-mini glass-inset">
+                <span class="stat-ico">🧹</span>
+                <div>
+                  <p class="muted" data-i18n="dash.lastClean"></p>
+                  <p class="stat-num small" id="dash-last">—</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button class="glass card dash-scan" id="btn-smart-scan">
+            <span class="scan-burst">✨</span>
+            <span class="scan-title" data-i18n="dash.smartScan"></span>
+            <span class="scan-sub muted" data-i18n="dash.smartScanSub"></span>
+          </button>
+          <div class="glass card dash-quick">
+            <button class="quick" data-goto="uninstall"><span>🗑️</span><span data-i18n="nav.uninstall"></span></button>
+            <button class="quick" data-goto="analyze"><span>🧭</span><span data-i18n="nav.analyze"></span></button>
+            <button class="quick" data-goto="optimize"><span>⚡️</span><span data-i18n="nav.optimize"></span></button>
+            <button class="quick" data-goto="status"><span>💗</span><span data-i18n="nav.status"></span></button>
+          </div>
+        </div>
+      </section>
+
+      <section class="view" id="view-scanflow" hidden>
+        <header class="view-head" data-tauri-drag-region>
+          <div data-tauri-drag-region>
+            <h1 id="sf-title" data-tauri-drag-region></h1>
+            <p id="sf-sub" class="muted" data-tauri-drag-region></p>
+          </div>
+          <div class="head-actions" id="sf-head-actions"></div>
+        </header>
+        <div id="sf-body"></div>
+        <div class="action-bar glass" id="sf-bar" hidden>
+          <p id="sf-bar-text" class="muted"></p>
+          <label class="toggle-pill" id="sf-sys-wrap" hidden>
+            <input type="checkbox" id="sf-sys">
+            <span>🔒 <span data-i18n="clean.includeSystem"></span></span>
+          </label>
+          <button class="btn ghost" id="sf-rescan" data-i18n="sf.rescan"></button>
+          <button class="btn grad" id="sf-action"></button>
+        </div>
+      </section>
+
+      <section class="view" id="view-uninstall" hidden>
+        <header class="view-head" data-tauri-drag-region>
+          <div data-tauri-drag-region>
+            <h1 data-i18n="nav.uninstall" data-tauri-drag-region></h1>
+            <p class="muted" id="un-count" data-tauri-drag-region></p>
+          </div>
+          <div class="head-actions">
+            <input type="search" id="un-search" class="search glass-inset">
+          </div>
+        </header>
+        <div id="un-grid" class="un-grid"></div>
+      </section>
+
+      <section class="view" id="view-analyze" hidden>
+        <header class="view-head" data-tauri-drag-region>
+          <div data-tauri-drag-region>
+            <h1 data-i18n="nav.analyze" data-tauri-drag-region></h1>
+            <p class="muted" data-i18n="an.sub" data-tauri-drag-region></p>
+          </div>
+        </header>
+        <div class="an-crumbs glass" id="an-crumbs"></div>
+        <div class="an-list" id="an-list"></div>
+      </section>
+
+      <section class="view" id="view-status" hidden>
+        <header class="view-head" data-tauri-drag-region>
+          <div data-tauri-drag-region>
+            <h1 data-i18n="nav.status" data-tauri-drag-region></h1>
+            <p class="muted" id="st-meta" data-tauri-drag-region></p>
+          </div>
+        </header>
+        <div class="st-grid" id="st-grid"></div>
+      </section>
+
+      <section class="view" id="view-history" hidden>
+        <header class="view-head" data-tauri-drag-region>
+          <div data-tauri-drag-region>
+            <h1 data-i18n="nav.history" data-tauri-drag-region></h1>
+            <p class="muted" data-i18n="hi.sub" data-tauri-drag-region></p>
+          </div>
+        </header>
+        <div id="hi-list"></div>
+      </section>
+
+      <section class="view" id="view-advanced" hidden>
+        <header class="view-head" data-tauri-drag-region>
+          <div data-tauri-drag-region>
+            <h1 data-i18n="nav.advanced" data-tauri-drag-region></h1>
+            <p class="muted" data-i18n="adv.sub" data-tauri-drag-region></p>
+          </div>
+          <div class="head-actions" id="adv-chips"></div>
+        </header>
+        <div id="terminal-wrap" class="glass">
+          <div id="terminal"></div>
+        </div>
+      </section>
+
+      <section class="view" id="view-settings" hidden>
+        <header class="view-head" data-tauri-drag-region>
+          <div data-tauri-drag-region>
+            <h1 data-i18n="nav.settings" data-tauri-drag-region></h1>
+            <p class="muted" data-i18n="set.sub" data-tauri-drag-region></p>
+          </div>
+        </header>
+        <div class="set-grid" id="set-grid"></div>
+      </section>
+
+    </main>
+  </div>
+
+  <div id="modal-root"></div>
+  <div id="toast-container"></div>
+
+  <script src="vendor/xterm.js"></script>
+  <script src="vendor/addon-fit.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

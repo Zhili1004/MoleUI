@@ -1,0 +1,891 @@
+#!/bin/bash
+# Mole - Base Definitions and Utilities
+# Core definitions, constants, and basic utility functions used by all modules
+
+set -euo pipefail
+
+# Prevent multiple sourcing
+if [[ -n "${MOLE_BASE_LOADED:-}" ]]; then
+    return 0
+fi
+readonly MOLE_BASE_LOADED=1
+
+# ============================================================================
+# Color Definitions
+# Honor https://no-color.org: any non-empty NO_COLOR disables ANSI escapes.
+# ============================================================================
+if [[ -n "${NO_COLOR:-}" ]]; then
+    readonly ESC=""
+    readonly GREEN=""
+    readonly BLUE=""
+    readonly CYAN=""
+    readonly YELLOW=""
+    readonly PURPLE=""
+    readonly PURPLE_BOLD=""
+    readonly RED=""
+    readonly GRAY=""
+    readonly NC=""
+else
+    readonly ESC=$'\033'
+    readonly GREEN="${ESC}[0;32m"
+    readonly BLUE="${ESC}[1;34m"
+    readonly CYAN="${ESC}[0;36m"
+    readonly YELLOW="${ESC}[0;33m"
+    readonly PURPLE="${ESC}[0;35m"
+    readonly PURPLE_BOLD="${ESC}[1;35m"
+    readonly RED="${ESC}[0;31m"
+    readonly GRAY="${ESC}[0;90m"
+    readonly NC="${ESC}[0m"
+fi
+
+# ============================================================================
+# Icon Definitions
+# ============================================================================
+readonly ICON_CONFIRM="◎"
+readonly ICON_ADMIN="⚙"
+readonly ICON_SUCCESS="✓"
+readonly ICON_ERROR="☻"
+readonly ICON_WARNING="◎"
+readonly ICON_EMPTY="○"
+readonly ICON_SOLID="●"
+readonly ICON_LIST="•"
+readonly ICON_SUBLIST="↳"
+readonly ICON_ARROW="➤"
+readonly ICON_DRY_RUN="→"
+readonly ICON_REVIEW="☞"
+readonly ICON_NAV_UP="↑"
+readonly ICON_NAV_DOWN="↓"
+readonly ICON_INFO="ℹ"
+
+# ============================================================================
+# LaunchServices Utility
+# ============================================================================
+
+# Locate the lsregister binary (path varies across macOS versions).
+get_lsregister_path() {
+    local -a candidates=(
+        "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+        "/System/Library/CoreServices/Frameworks/LaunchServices.framework/Support/lsregister"
+    )
+    local candidate=""
+    for candidate in "${candidates[@]}"; do
+        if [[ -x "$candidate" ]]; then
+            echo "$candidate"
+            return 0
+        fi
+    done
+    echo ""
+    return 0
+}
+
+# ============================================================================
+# Global Configuration Constants
+# ============================================================================
+readonly MOLE_TEMP_FILE_AGE_DAYS=7       # Temp file retention (days)
+readonly MOLE_ORPHAN_AGE_DAYS=30         # Orphaned data retention (days)
+readonly MOLE_DOTDIR_ORPHAN_AGE_DAYS=60  # Orphan dotfile hint threshold (days)
+readonly MOLE_MAX_PARALLEL_JOBS=15       # Parallel job limit
+readonly MOLE_MAIL_DOWNLOADS_MIN_KB=5120 # Mail attachment size threshold
+readonly MOLE_MAIL_AGE_DAYS=30           # Mail attachment retention (days)
+readonly MOLE_LOG_AGE_DAYS=7             # Log retention (days)
+readonly MOLE_CRASH_REPORT_AGE_DAYS=7    # Crash report retention (days)
+readonly MOLE_SAVED_STATE_AGE_DAYS=30    # Saved state retention (days) - increased for safety
+readonly MOLE_GPU_CACHE_AGE_DAYS=1       # Rebuildable GPU cache retention (days)
+readonly MOLE_TM_BACKUP_SAFE_HOURS=48    # TM backup safety window (hours)
+readonly MOLE_MAX_DS_STORE_FILES=500     # Max .DS_Store files to clean per scan
+readonly MOLE_MAX_ORPHAN_ITERATIONS=100  # Max iterations for orphaned app data scan
+readonly MOLE_ONE_GIB_KB=$((1024 * 1024))
+readonly MOLE_ONE_GB_BYTES=1000000000
+
+# ============================================================================
+# Whitelist Configuration
+# ============================================================================
+readonly FINDER_METADATA_SENTINEL="FINDER_METADATA"
+declare -a DEFAULT_WHITELIST_PATTERNS=(
+    "$HOME/Library/Caches/ms-playwright*"
+    "$HOME/.cache/huggingface*"
+    "$HOME/.m2/repository/*"
+    "$HOME/.gradle/caches/*"
+    "$HOME/.gradle/daemon/*"
+    "$HOME/.ollama/models/*"
+    "$HOME/Library/Caches/com.nssurge.surge-mac/*"
+    "$HOME/Library/Application Support/com.nssurge.surge-mac/*"
+    "$HOME/Library/Caches/org.R-project.R/R/renv/*"
+    "$HOME/Library/Caches/pypoetry/virtualenvs*"
+    "$HOME/Library/Caches/JetBrains*"
+    "$HOME/Library/Caches/com.jetbrains.toolbox*"
+    "$HOME/Library/Caches/tealdeer/tldr-pages"
+    "$HOME/Library/Application Support/JetBrains*"
+    "$HOME/Library/Caches/com.apple.finder"
+    "$HOME/Library/Mobile Documents*"
+    # System-critical caches that affect macOS functionality and stability
+    # CRITICAL: Removing these will cause system search and UI issues
+    "$HOME/Library/Caches/com.apple.FontRegistry*"
+    "$HOME/Library/Caches/com.apple.spotlight*"
+    "$HOME/Library/Caches/com.apple.Spotlight*"
+    "$HOME/Library/Caches/CloudKit*"
+    "$FINDER_METADATA_SENTINEL"
+)
+
+declare -a DEFAULT_OPTIMIZE_WHITELIST_PATTERNS=(
+)
+
+# ============================================================================
+# BSD Stat Compatibility
+# ============================================================================
+readonly STAT_BSD="/usr/bin/stat"
+
+# Get file size in bytes
+get_file_size() {
+    local file="$1"
+    local result
+    result=$($STAT_BSD -f%z "$file" 2> /dev/null)
+    echo "${result:-0}"
+}
+
+# Get file modification time in epoch seconds
+get_file_mtime() {
+    local file="$1"
+    [[ -z "$file" ]] && {
+        echo "0"
+        return
+    }
+    local result
+    result=$($STAT_BSD -f%m "$file" 2> /dev/null || echo "")
+    if [[ "$result" =~ ^[0-9]+$ ]]; then
+        echo "$result"
+    else
+        echo "0"
+    fi
+}
+
+# Determine date command once
+if [[ -x /bin/date ]]; then
+    _DATE_CMD="/bin/date"
+else
+    _DATE_CMD="date"
+fi
+
+# Get current time in epoch seconds (defensive against locale/aliases)
+get_epoch_seconds() {
+    local result
+    result=$($_DATE_CMD +%s 2> /dev/null || echo "")
+    if [[ "$result" =~ ^[0-9]+$ ]]; then
+        echo "$result"
+    else
+        echo "0"
+    fi
+}
+
+# Get file owner username
+get_file_owner() {
+    local file="$1"
+    $STAT_BSD -f%Su "$file" 2> /dev/null || echo ""
+}
+
+# ============================================================================
+# System Utilities
+# ============================================================================
+
+# Detect CPU architecture
+# Returns: "Apple Silicon" or "Intel"
+detect_architecture() {
+    if [[ -n "${MOLE_ARCH_CACHE:-}" ]]; then
+        echo "$MOLE_ARCH_CACHE"
+        return 0
+    fi
+
+    if [[ "$(uname -m)" == "arm64" ]]; then
+        export MOLE_ARCH_CACHE="Apple Silicon"
+    else
+        export MOLE_ARCH_CACHE="Intel"
+    fi
+    echo "$MOLE_ARCH_CACHE"
+}
+
+get_free_space_target() {
+    local target="/"
+    if [[ -d "/System/Volumes/Data" ]]; then
+        target="/System/Volumes/Data"
+    fi
+
+    printf '%s\n' "$target"
+}
+
+# Get free disk space on root volume in 1K blocks.
+get_free_space_kb() {
+    local target
+    target=$(get_free_space_target)
+
+    local available_kb
+    available_kb=$(command df -Pk "$target" 2> /dev/null | awk 'NR==2 {print $4}' || true)
+    if [[ "$available_kb" =~ ^[0-9]+$ ]]; then
+        printf '%s\n' "$available_kb"
+        return 0
+    fi
+
+    return 1
+}
+
+format_free_space_kb() {
+    local free_kb="${1:-}"
+    if [[ "$free_kb" =~ ^[0-9]+$ ]]; then
+        bytes_to_human_kb "$free_kb"
+        return 0
+    fi
+
+    echo "Unknown"
+}
+
+# Get free disk space on root volume.
+# Returns: human-readable decimal string (e.g., "100.00GB")
+get_free_space() {
+    local free_kb
+    if free_kb=$(get_free_space_kb) && [[ "$free_kb" =~ ^[0-9]+$ ]]; then
+        format_free_space_kb "$free_kb"
+        return $?
+    fi
+
+    echo "Unknown"
+}
+
+# Get optimal parallel jobs for operation type (scan|io|compute|default)
+get_optimal_parallel_jobs() {
+    local operation_type="${1:-default}"
+    if [[ -z "${MOLE_CPU_CORES_CACHE:-}" ]]; then
+        export MOLE_CPU_CORES_CACHE=$(sysctl -n hw.ncpu 2> /dev/null || echo 4)
+    fi
+    local cpu_cores="$MOLE_CPU_CORES_CACHE"
+    case "$operation_type" in
+        scan | io)
+            echo $((cpu_cores * 2))
+            ;;
+        compute)
+            echo "$cpu_cores"
+            ;;
+        *)
+            echo $((cpu_cores + 2))
+            ;;
+    esac
+}
+
+# ============================================================================
+# User Context Utilities
+# ============================================================================
+
+is_root_user() {
+    [[ "$(id -u)" == "0" ]]
+}
+
+get_invoking_uid() {
+    if [[ -n "${SUDO_UID:-}" ]]; then
+        echo "$SUDO_UID"
+        return 0
+    fi
+
+    local uid
+    uid=$(id -u 2> /dev/null || true)
+    echo "$uid"
+}
+
+get_invoking_gid() {
+    if [[ -n "${SUDO_GID:-}" ]]; then
+        echo "$SUDO_GID"
+        return 0
+    fi
+
+    local gid
+    gid=$(id -g 2> /dev/null || true)
+    echo "$gid"
+}
+
+get_invoking_home() {
+    if [[ -n "${SUDO_USER:-}" && "${SUDO_USER:-}" != "root" ]]; then
+        get_user_home "$SUDO_USER"
+        return 0
+    fi
+
+    echo "${HOME:-}"
+}
+
+get_user_home() {
+    local user="$1"
+    local home=""
+
+    if [[ -z "$user" ]]; then
+        echo ""
+        return 0
+    fi
+
+    if command -v dscl > /dev/null 2>&1; then
+        home=$(dscl . -read "/Users/$user" NFSHomeDirectory 2> /dev/null | awk '{print $2}' | head -1 || true)
+    fi
+
+    if [[ -z "$home" ]]; then
+        home=$(id -P "$user" 2> /dev/null | cut -d: -f9 || true)
+    fi
+
+    if [[ "$home" == "~"* ]]; then
+        home=""
+    fi
+
+    echo "$home"
+}
+
+ensure_user_dir() {
+    local raw_path="$1"
+    if [[ -z "$raw_path" ]]; then
+        return 0
+    fi
+
+    local target_path="$raw_path"
+    if [[ "$target_path" == "~"* ]]; then
+        target_path="${target_path/#\~/$HOME}"
+    fi
+
+    mkdir -p "$target_path" 2> /dev/null || true
+
+    if ! is_root_user; then
+        return 0
+    fi
+
+    local sudo_user="${SUDO_USER:-}"
+    if [[ -z "$sudo_user" || "$sudo_user" == "root" ]]; then
+        return 0
+    fi
+
+    local user_home
+    user_home=$(get_user_home "$sudo_user")
+    if [[ -z "$user_home" ]]; then
+        return 0
+    fi
+    user_home="${user_home%/}"
+
+    if [[ "$target_path" != "$user_home" && "$target_path" != "$user_home/"* ]]; then
+        return 0
+    fi
+
+    local owner_uid="${SUDO_UID:-}"
+    local owner_gid="${SUDO_GID:-}"
+    if [[ -z "$owner_uid" || -z "$owner_gid" ]]; then
+        owner_uid=$(id -u "$sudo_user" 2> /dev/null || true)
+        owner_gid=$(id -g "$sudo_user" 2> /dev/null || true)
+    fi
+
+    if [[ -z "$owner_uid" || -z "$owner_gid" ]]; then
+        return 0
+    fi
+
+    local dir="$target_path"
+    while [[ -n "$dir" && "$dir" != "/" ]]; do
+        # Early stop: if ownership is already correct, no need to continue up the tree
+        if [[ -d "$dir" ]]; then
+            local current_uid
+            current_uid=$("$STAT_BSD" -f%u "$dir" 2> /dev/null || echo "")
+            if [[ "$current_uid" == "$owner_uid" ]]; then
+                break
+            fi
+        fi
+
+        chown "$owner_uid:$owner_gid" "$dir" 2> /dev/null || true
+
+        if [[ "$dir" == "$user_home" ]]; then
+            break
+        fi
+        dir=$(dirname "$dir")
+        if [[ "$dir" == "." ]]; then
+            break
+        fi
+    done
+}
+
+ensure_user_file() {
+    local raw_path="$1"
+    if [[ -z "$raw_path" ]]; then
+        return 0
+    fi
+
+    local target_path="$raw_path"
+    if [[ "$target_path" == "~"* ]]; then
+        target_path="${target_path/#\~/$HOME}"
+    fi
+
+    ensure_user_dir "$(dirname "$target_path")"
+    touch "$target_path" 2> /dev/null || true
+
+    if ! is_root_user; then
+        return 0
+    fi
+
+    local sudo_user="${SUDO_USER:-}"
+    if [[ -z "$sudo_user" || "$sudo_user" == "root" ]]; then
+        return 0
+    fi
+
+    local user_home
+    user_home=$(get_user_home "$sudo_user")
+    if [[ -z "$user_home" ]]; then
+        return 0
+    fi
+    user_home="${user_home%/}"
+
+    if [[ "$target_path" != "$user_home" && "$target_path" != "$user_home/"* ]]; then
+        return 0
+    fi
+
+    local owner_uid="${SUDO_UID:-}"
+    local owner_gid="${SUDO_GID:-}"
+    if [[ -z "$owner_uid" || -z "$owner_gid" ]]; then
+        owner_uid=$(id -u "$sudo_user" 2> /dev/null || true)
+        owner_gid=$(id -g "$sudo_user" 2> /dev/null || true)
+    fi
+
+    if [[ -n "$owner_uid" && -n "$owner_gid" ]]; then
+        chown "$owner_uid:$owner_gid" "$target_path" 2> /dev/null || true
+    fi
+}
+
+# ============================================================================
+# Formatting Utilities
+# ============================================================================
+
+# Convert bytes to human-readable format (e.g., 1.5GB)
+# macOS (since Snow Leopard) uses Base-10 calculation (1 KB = 1000 bytes)
+bytes_to_human() {
+    local bytes="$1"
+    [[ "$bytes" =~ ^[0-9]+$ ]] || {
+        echo "0B"
+        return 1
+    }
+
+    # GB: >= 1,000,000,000 bytes
+    if ((bytes >= 1000000000)); then
+        local scaled=$(((bytes * 100 + 500000000) / 1000000000))
+        printf "%d.%02dGB\n" $((scaled / 100)) $((scaled % 100))
+    # MB: >= 1,000,000 bytes
+    elif ((bytes >= 1000000)); then
+        local scaled=$(((bytes * 10 + 500000) / 1000000))
+        printf "%d.%01dMB\n" $((scaled / 10)) $((scaled % 10))
+    # KB: >= 1,000 bytes (round up to nearest KB instead of decimal)
+    elif ((bytes >= 1000)); then
+        printf "%dKB\n" $(((bytes + 500) / 1000))
+    else
+        printf "%dB\n" "$bytes"
+    fi
+}
+
+# Convert kilobytes to human-readable format
+# Args: $1 - size in KB
+# Returns: formatted string
+bytes_to_human_kb() {
+    bytes_to_human "$((${1:-0} * 1024))"
+}
+
+format_free_space_delta_kb() {
+    local delta_kb="${1:-0}"
+    [[ "$delta_kb" =~ ^-?[0-9]+$ ]] || delta_kb=0
+
+    local sign=""
+    local abs_kb="$delta_kb"
+    if ((delta_kb > 0)); then
+        sign="+"
+    elif ((delta_kb < 0)); then
+        sign="-"
+        abs_kb=$((-delta_kb))
+    fi
+
+    printf '%s%s\n' "$sign" "$(bytes_to_human_kb "$abs_kb")"
+}
+
+mole_is_reverse_dns_bundle_id() {
+    local bundle_id="${1:-}"
+
+    [[ -n "$bundle_id" && "$bundle_id" != "unknown" ]] || return 1
+    [[ "$bundle_id" =~ ^[A-Za-z0-9][-A-Za-z0-9]*(\.[A-Za-z0-9][-A-Za-z0-9]*)+$ ]]
+}
+
+mole_name_starts_with_bundle_id_boundary() {
+    local name="${1##*/}"
+    local bundle_id="${2:-}"
+
+    mole_is_reverse_dns_bundle_id "$bundle_id" || return 1
+    [[ "$name" == "$bundle_id" ||
+        "$name" == "$bundle_id".* ]]
+}
+
+mole_name_has_bundle_id_boundary() {
+    local name="${1##*/}"
+    local bundle_id="${2:-}"
+
+    mole_name_starts_with_bundle_id_boundary "$name" "$bundle_id" && return 0
+    mole_is_reverse_dns_bundle_id "$bundle_id" || return 1
+    [[ "$name" == *."$bundle_id" ||
+        "$name" == *."$bundle_id".* ]]
+}
+
+# Colorize an already-formatted human size string by unit.
+colorize_human_size() {
+    local size_human="$1"
+
+    local size_color=""
+    case "$size_human" in
+        *GB) size_color="$RED" ;;
+        *MB) size_color="$YELLOW" ;;
+        *KB) size_color="$GREEN" ;;
+        *B) size_color="$GRAY" ;;
+        *)
+            printf '%s' "$size_human"
+            return 0
+            ;;
+    esac
+
+    printf '%s%s%s' "$size_color" "$size_human" "$NC"
+}
+
+# Cleanup result lines are always shown in green. Kept as a function (callers
+# still pass a size in KB) so per-size coloring can be reintroduced in one place
+# if ever wanted.
+cleanup_result_color_kb() {
+    printf '%s' "$GREEN"
+}
+
+# ============================================================================
+# Temporary File Management
+# ============================================================================
+
+# Tracked temporary files and directories
+declare -a MOLE_TEMP_FILES=()
+declare -a MOLE_TEMP_DIRS=()
+
+normalize_temp_root() {
+    local path="${1:-}"
+    [[ -z "$path" ]] && return 1
+
+    if [[ "$path" == "~"* ]]; then
+        path="${path/#\~/$HOME}"
+    fi
+
+    while [[ "$path" != "/" && "$path" == */ ]]; do
+        path="${path%/}"
+    done
+
+    [[ -n "$path" ]] || return 1
+    printf '%s\n' "$path"
+}
+
+probe_temp_root() {
+    local raw_path="$1"
+    local allow_create="${2:-false}"
+    local path
+    local probe=""
+
+    path=$(normalize_temp_root "$raw_path") || return 1
+
+    if [[ "$allow_create" == "true" ]]; then
+        ensure_user_dir "$path"
+    fi
+
+    [[ -d "$path" ]] || return 1
+
+    probe=$(mktemp "$path/mole.probe.XXXXXX" 2> /dev/null) || return 1
+    rm -f "$probe" 2> /dev/null || true
+
+    printf '%s\n' "$path"
+}
+
+ensure_mole_temp_root() {
+    if [[ -n "${MOLE_RESOLVED_TMPDIR:-}" ]]; then
+        return 0
+    fi
+
+    local resolved=""
+    local candidate="${TMPDIR:-}"
+    local invoking_home=""
+
+    if [[ -n "$candidate" ]]; then
+        resolved=$(probe_temp_root "$candidate" false || true)
+    fi
+
+    if [[ -z "$resolved" ]]; then
+        invoking_home=$(get_invoking_home)
+        if [[ -n "$invoking_home" ]]; then
+            resolved=$(probe_temp_root "$invoking_home/.cache/mole/tmp" true || true)
+        fi
+    fi
+
+    if [[ -z "$resolved" ]]; then
+        resolved=$(probe_temp_root "/tmp" false || true)
+    fi
+
+    [[ -n "$resolved" ]] || resolved="/tmp"
+    MOLE_RESOLVED_TMPDIR="$resolved"
+    export MOLE_RESOLVED_TMPDIR
+}
+
+prepare_mole_tmpdir() {
+    ensure_mole_temp_root
+    export TMPDIR="$MOLE_RESOLVED_TMPDIR"
+    printf '%s\n' "$MOLE_RESOLVED_TMPDIR"
+}
+
+mole_temp_path_template() {
+    local prefix="${1:-mole}"
+    ensure_mole_temp_root
+    printf '%s/%s.XXXXXX\n' "$MOLE_RESOLVED_TMPDIR" "$prefix"
+}
+
+# Create tracked temporary file
+create_temp_file() {
+    local temp
+    ensure_mole_temp_root
+    temp=$(mktemp "$MOLE_RESOLVED_TMPDIR/mole.XXXXXX") || return 1
+    register_temp_file "$temp"
+    echo "$temp"
+}
+
+# Create tracked temporary directory
+create_temp_dir() {
+    local temp
+    ensure_mole_temp_root
+    temp=$(mktemp -d "$MOLE_RESOLVED_TMPDIR/mole.XXXXXX") || return 1
+    register_temp_dir "$temp"
+    echo "$temp"
+}
+
+# Register existing file for cleanup
+register_temp_file() {
+    MOLE_TEMP_FILES+=("$1")
+}
+
+# Register existing directory for cleanup
+register_temp_dir() {
+    MOLE_TEMP_DIRS+=("$1")
+}
+
+# Create temp file with prefix (for analyze.sh compatibility)
+# Compatible with both BSD mktemp (macOS default) and GNU mktemp (coreutils)
+mktemp_file() {
+    local prefix="${1:-mole}"
+    local temp
+    local error_msg
+    # Add .XXXXXX suffix to work with both BSD and GNU mktemp
+    if ! error_msg=$(mktemp "$(mole_temp_path_template "$prefix")" 2>&1); then
+        echo "Error: Failed to create temporary file: $error_msg" >&2
+        return 1
+    fi
+    temp="$error_msg"
+    register_temp_file "$temp"
+    echo "$temp"
+}
+
+# Cleanup all tracked temp files and directories
+cleanup_temp_files() {
+    if declare -F stop_inline_spinner > /dev/null 2>&1; then
+        stop_inline_spinner || true
+    fi
+    local file
+    if [[ ${#MOLE_TEMP_FILES[@]} -gt 0 ]]; then
+        for file in "${MOLE_TEMP_FILES[@]}"; do
+            [[ -f "$file" ]] && rm -f "$file" 2> /dev/null || true
+        done
+    fi
+
+    if [[ ${#MOLE_TEMP_DIRS[@]} -gt 0 ]]; then
+        for file in "${MOLE_TEMP_DIRS[@]}"; do
+            [[ -d "$file" ]] && rm -rf "$file" 2> /dev/null || true # SAFE: cleanup_temp_files
+        done
+    fi
+
+    MOLE_TEMP_FILES=()
+    MOLE_TEMP_DIRS=()
+}
+
+# ============================================================================
+# Section Tracking (for progress indication)
+# ============================================================================
+
+# Global section tracking variables
+TRACK_SECTION=0
+SECTION_ACTIVITY=0
+
+# IMPORTANT: There are intentionally three start_section / end_section /
+# note_activity implementations across the codebase. The one that wins is the
+# one loaded last, and each variant has product-level differences (color,
+# fallback wording, dry-run export behavior). Before changing any of them,
+# read the cross references first:
+#
+#   - lib/core/base.sh   (this file): purple arrow header, "Nothing to tidy"
+#                                     fallback, no dry-run export.
+#   - bin/clean.sh:      purple arrow header, "Nothing to clean" fallback,
+#                        appends '=== title ===' to EXPORT_LIST_FILE under
+#                        DRY_RUN, stops the section spinner on close.
+#   - bin/purge.sh:      blue ━━━ box header, no fallback message, writes
+#                        each note_activity line directly to EXPORT_LIST_FILE.
+#
+# Treat this file's version as the default for everything outside the clean
+# and purge entry points. Do not unify the three blindly; the wording and
+# export semantics are user-visible.
+
+# Start a new section
+# Args: $1 - section title
+start_section() {
+    TRACK_SECTION=1
+    SECTION_ACTIVITY=0
+    echo ""
+    echo -e "${PURPLE_BOLD}${ICON_ARROW} $1${NC}"
+}
+
+# End a section
+# Shows "Nothing to tidy" if no activity was recorded
+end_section() {
+    if [[ "${TRACK_SECTION:-0}" == "1" && "${SECTION_ACTIVITY:-0}" == "0" ]]; then
+        echo -e "  ${GREEN}${ICON_SUCCESS}${NC} Nothing to tidy"
+    fi
+    TRACK_SECTION=0
+}
+
+# Mark activity in current section
+note_activity() {
+    if [[ "${TRACK_SECTION:-0}" == "1" ]]; then
+        SECTION_ACTIVITY=1
+    fi
+}
+
+# Start a section spinner with optional message
+# Usage: start_section_spinner "message"
+start_section_spinner() {
+    local message="${1:-Scanning...}"
+    stop_inline_spinner || true
+    if [[ -t 1 ]]; then
+        MOLE_SPINNER_PREFIX="  " start_inline_spinner "$message"
+    fi
+}
+
+# Stop spinner and clear the line
+# Usage: stop_section_spinner
+stop_section_spinner() {
+    # Always try to stop spinner (function handles empty PID gracefully)
+    stop_inline_spinner || true
+    # Always clear line to handle edge cases where spinner output remains
+    # (e.g., spinner was stopped elsewhere but line not cleared)
+    if [[ -t 1 ]]; then
+        printf "\r\033[2K" >&2 || true
+    fi
+}
+
+# Safe terminal line clearing with terminal type detection
+# Usage: safe_clear_lines <num_lines> [tty_device]
+# Returns: 0 on success, 1 if terminal doesn't support ANSI
+safe_clear_lines() {
+    local lines="${1:-1}"
+    local tty_device="${2:-/dev/tty}"
+
+    # Use centralized ANSI support check (defined below)
+    # Note: This forward reference works because functions are parsed before execution
+    is_ansi_supported 2> /dev/null || return 1
+
+    # Clear lines one by one (more reliable than multi-line sequences)
+    local i
+    for ((i = 0; i < lines; i++)); do
+        printf "\033[1A\r\033[2K" > "$tty_device" 2> /dev/null || return 1
+    done
+
+    return 0
+}
+
+# Safe single line clear with fallback
+# Usage: safe_clear_line [tty_device]
+safe_clear_line() {
+    local tty_device="${1:-/dev/tty}"
+
+    # Use centralized ANSI support check
+    is_ansi_supported 2> /dev/null || return 1
+
+    printf "\r\033[2K" > "$tty_device" 2> /dev/null || return 1
+    return 0
+}
+
+# Update progress spinner if enough time has elapsed
+# Usage: update_progress_if_needed <completed> <total> <last_update_time_var> [interval]
+# Example: update_progress_if_needed "$completed" "$total" last_progress_update 2
+# Returns: 0 if updated, 1 if skipped
+update_progress_if_needed() {
+    local completed="$1"
+    local total="$2"
+    local last_update_var="$3" # Name of variable holding last update time
+    local interval="${4:-2}"   # Default: update every 2 seconds
+
+    # Get current time
+    local current_time
+    current_time=$(get_epoch_seconds)
+
+    # Get last update time from variable
+    local last_time
+    # eval: indirect read by name; bash 3.2 has no nameref (declare -n)
+    eval "last_time=\${$last_update_var:-0}"
+    [[ "$last_time" =~ ^[0-9]+$ ]] || last_time=0
+
+    # Check if enough time has elapsed
+    if [[ $((current_time - last_time)) -ge $interval ]]; then
+        # Update the spinner with progress
+        stop_section_spinner
+        start_section_spinner "Scanning items... $completed/$total"
+
+        # Update the last_update_time variable
+        # eval: indirect write by name; bash 3.2 has no nameref
+        eval "$last_update_var=$current_time"
+        return 0
+    fi
+
+    return 1
+}
+
+# ============================================================================
+# Terminal Compatibility Checks
+# ============================================================================
+
+# Check if terminal supports ANSI escape codes
+# Usage: is_ansi_supported
+# Returns: 0 if supported, 1 if not
+is_ansi_supported() {
+    if [[ -n "${MOLE_ANSI_SUPPORTED_CACHE:-}" ]]; then
+        return "$MOLE_ANSI_SUPPORTED_CACHE"
+    fi
+
+    # Check if running in interactive terminal
+    if ! [[ -t 1 ]]; then
+        export MOLE_ANSI_SUPPORTED_CACHE=1
+        return 1
+    fi
+
+    # Check TERM variable
+    if [[ -z "${TERM:-}" ]]; then
+        export MOLE_ANSI_SUPPORTED_CACHE=1
+        return 1
+    fi
+
+    # Check for known ANSI-compatible terminals
+    case "$TERM" in
+        xterm* | vt100 | vt220 | screen* | tmux* | ansi | linux | rxvt* | konsole*)
+            export MOLE_ANSI_SUPPORTED_CACHE=0
+            return 0
+            ;;
+        dumb | unknown)
+            export MOLE_ANSI_SUPPORTED_CACHE=1
+            return 1
+            ;;
+        *)
+            # Check terminfo database if available
+            if command -v tput > /dev/null 2>&1; then
+                # Test if terminal supports colors (good proxy for ANSI support)
+                local colors=$(tput colors 2> /dev/null || echo "0")
+                if [[ "$colors" -ge 8 ]]; then
+                    export MOLE_ANSI_SUPPORTED_CACHE=0
+                    return 0
+                fi
+            fi
+            export MOLE_ANSI_SUPPORTED_CACHE=1
+            return 1
+            ;;
+    esac
+}

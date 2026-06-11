@@ -1,0 +1,41 @@
+MoleUI
+Copyright (C) 2026 Zhili Liang
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. See the LICENSE file for the full text.
+
+================================================================================
+Third-party components
+================================================================================
+
+1. Mole  (bundled CLI — src-tauri/resources/mole-dist/)
+   Copyright (c) tw93 and the Mole contributors
+   Homepage:   https://github.com/tw93/Mole
+   License:    GNU General Public License v3.0 (GPL-3.0)
+   Source:     This is a verbatim copy of the Mole source tree at the `main`
+               branch, commit 634433d921e2
+               (https://github.com/tw93/Mole/commit/634433d921e2). The Go
+               helper binaries (bin/analyze-go, bin/status-go) were compiled
+               from that same source. The "corresponding source" required by
+               the GPL is that upstream commit.
+   Notices:    The original LICENSE and TRADEMARK.md are preserved unmodified
+               inside src-tauri/resources/mole-dist/.
+   Modifications: The entry script (mole-dist/mole) has a small change so it
+               resolves its own location through symlinks, allowing the CLI to
+               run from inside the app bundle. No functional cleanup behaviour
+               is altered.
+
+   "Mole" and related marks are governed by the upstream trademark policy:
+   https://github.com/tw93/Mole/blob/main/TRADEMARK.md
+   MoleUI is an independent community project and is not affiliated with,
+   sponsored by, or endorsed by the Mole author.
+
+2. xterm.js  (bundled — dist/vendor/)
+   Copyright (c) The xterm.js authors
+   Homepage:   https://github.com/xtermjs/xterm.js
+   License:    MIT
+
+3. Tauri, and the Rust crates listed in src-tauri/Cargo.toml, are used under
+   their respective MIT / Apache-2.0 licenses.

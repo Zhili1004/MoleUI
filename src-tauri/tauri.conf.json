@@ -1,0 +1,50 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "MoleUI",
+  "version": "2.1.0",
+  "identifier": "com.liangzhili.moleui",
+  "build": {
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "title": "MoleUI",
+        "width": 1160,
+        "height": 760,
+        "minWidth": 980,
+        "minHeight": 640,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": { "x": 20, "y": 22 },
+        "transparent": true,
+        "windowEffects": {
+          "effects": ["underWindowBackground"],
+          "state": "active"
+        }
+      }
+    ],
+    "security": {
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$APPCACHE/**", "$APPCACHE/icons/*"]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg"],
+    "category": "Utility",
+    "icon": ["icons/icon.icns"],
+    "resources": {
+      "resources/mole-dist": "mole-dist"
+    },
+    "macOS": {
+      "signingIdentity": "Developer ID Application: Zhili Liang (2NL27AJX3L)",
+      "minimumSystemVersion": "11.0"
+    }
+  }
+}

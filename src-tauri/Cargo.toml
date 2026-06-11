@@ -1,0 +1,20 @@
+[package]
+name = "moleui"
+version = "1.0.0"
+description = "Native macOS GUI for the Mole CLI cleanup tool"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["macos-private-api", "protocol-asset"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+portable-pty = "0.9"
+base64 = "0.22"
+
+[profile.release]
+strip = true
+lto = "thin"
+codegen-units = 16
