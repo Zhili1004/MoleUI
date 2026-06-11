@@ -20,8 +20,7 @@
 > ❤️ **致敬原作者 [@tw93](https://github.com/tw93)**：MoleUI 只是一层图形外壳，所有真正的清理能力都来自 Mole。如果它帮到了你，请去给 [原项目点一颗 Star](https://github.com/tw93/Mole)。
 
 <p align="center">
-  <img src="assets/dashboard.png" alt="MoleUI Dashboard" width="760">
-  <br><sub>（仪表盘截图占位：把任意一张运行截图保存为 <code>assets/dashboard.png</code> 即可自动显示）</sub>
+  <img src="assets/dashboard.png" alt="MoleUI 仪表盘" width="820">
 </p>
 
 ## ✨ 特点
