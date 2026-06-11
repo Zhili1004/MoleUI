@@ -39,23 +39,23 @@
   <path d="M 250 96 l 7 19 19 7 -19 7 -7 19 -7 -19 -19 -7 19 -7 z" fill="#ffffff" opacity="0.95"/>
 
   <!-- wordmark -->
-  <text x="316" y="176" font-size="78" font-weight="800" fill="#ffffff" letter-spacing="-1">MoleUI</text>
-  <text x="320" y="226" font-size="27" font-weight="600" fill="#ffffff" opacity="0.96">给 tw93/Mole 套上的原生 macOS 图形界面</text>
-  <text x="320" y="262" font-size="20" font-weight="500" fill="#ffffff" opacity="0.85">A liquid-glass native GUI for the Mole Mac cleanup CLI</text>
+  <text x="316" y="172" font-size="76" font-weight="800" fill="#ffffff" letter-spacing="-1">MoleUI</text>
+  <text x="320" y="216" font-size="25" font-weight="600" fill="#ffffff" opacity="0.96" textLength="430" lengthAdjust="spacingAndGlyphs">给 tw93/Mole 套上的原生 macOS 图形界面</text>
+  <text x="320" y="250" font-size="18" font-weight="500" fill="#ffffff" opacity="0.82" textLength="470" lengthAdjust="spacingAndGlyphs">A liquid-glass native GUI for the Mole Mac cleanup CLI</text>
 
-  <!-- chips -->
-  <g font-size="19" font-weight="600" fill="#ffffff">
-    <g transform="translate(320 296)">
-      <rect width="180" height="40" rx="20" fill="#ffffff" fill-opacity="0.18" stroke="#ffffff" stroke-opacity="0.4"/>
-      <text x="20" y="26">Intel · Apple Silicon</text>
+  <!-- chips: textLength forces the label to fit the pill exactly -->
+  <g font-size="18" font-weight="600" fill="#ffffff">
+    <g transform="translate(320 288)">
+      <rect width="236" height="42" rx="21" fill="#ffffff" fill-opacity="0.18" stroke="#ffffff" stroke-opacity="0.42"/>
+      <text x="22" y="27" textLength="192" lengthAdjust="spacingAndGlyphs">Intel · Apple Silicon</text>
     </g>
-    <g transform="translate(516 296)">
-      <rect width="132" height="40" rx="20" fill="#ffffff" fill-opacity="0.18" stroke="#ffffff" stroke-opacity="0.4"/>
-      <text x="20" y="26">Rust · &lt;13MB</text>
+    <g transform="translate(570 288)">
+      <rect width="164" height="42" rx="21" fill="#ffffff" fill-opacity="0.18" stroke="#ffffff" stroke-opacity="0.42"/>
+      <text x="22" y="27" textLength="120" lengthAdjust="spacingAndGlyphs">Rust · &lt;13MB</text>
     </g>
-    <g transform="translate(664 296)">
-      <rect width="150" height="40" rx="20" fill="#ffffff" fill-opacity="0.18" stroke="#ffffff" stroke-opacity="0.4"/>
-      <text x="20" y="26">GPL-3.0 · 已公证</text>
+    <g transform="translate(748 288)">
+      <rect width="204" height="42" rx="21" fill="#ffffff" fill-opacity="0.18" stroke="#ffffff" stroke-opacity="0.42"/>
+      <text x="22" y="27" textLength="160" lengthAdjust="spacingAndGlyphs">GPL-3.0 · 已签名公证</text>
     </g>
   </g>
 </svg>
